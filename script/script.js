@@ -1,7 +1,7 @@
 //Усложнённое задание
 'use strict';
 
-let citiesData, countryBlock;
+let local, setLocal, citiesData, countryBlock;
 const main = document.querySelector('.main');
 const label = document.querySelector('label');
 const inputCities = document.querySelector('.input-cities');
@@ -18,15 +18,44 @@ const emptySearch = {
   "name": "Ничего не найдено",
   "count": ""
 };
+const locale = {
+  'RU': 'Россия',
+  'EN': 'United Kingdom',
+  'DE': 'Deutschland'
+};
 
+const setCookie = (key, value, year, month, day, path, domain, secure) => {
+  let cookieStr = encodeURI(key) + '=' + encodeURI(value);
+  if (year) {
+    const expires = new Date(year, month - 1, day);
+    cookieStr += '; expires=' + expires.toUTCString();
+  } else {
+    const expires = new Date();
+    expires.setMonth(expires.getMonth() + 1);
+    cookieStr += '; expires=' + expires.toUTCString();
+  }
+  cookieStr += path ? '; path=' + encodeURI(path) : '';
+  cookieStr += domain ? '; domain=' + encodeURI(domain) : '';
+  cookieStr += secure ? '; secure' : '';
+  document.cookie = cookieStr;
+};
 const load = () => {
-  inputCities.style.display = 'none';
   setTimeout(() => {
     inputCities.style.display = 'block';
     loader.remove();
   }, 1000);
 };
-load();
+
+const sortCitiesData = () => {
+  citiesData.sort((item) => {
+    if (item.country === locale[setLocal]) {
+      return 1;
+    } else {
+      return -1;
+    }
+  });
+  citiesData.reverse();
+};
 
 const loadData = (lang) => {
   return fetch('./db_cities.json')
@@ -36,10 +65,36 @@ const loadData = (lang) => {
       }
       return response.json();
     })
-    .then((response) => citiesData = response[lang])
+    .then((response) => {
+      citiesData = response[lang];
+      sortCitiesData();
+      const json = JSON.stringify(citiesData);
+      localStorage.setItem('citiesData', json);
+    })
     .catch(error => console.error(error));
 };
-loadData('RU');
+const run = () => {
+  const cookie = document.cookie.match('(^|;) ?' + 'setLocal' + '=([^;]*)(;|$)');
+  const locStor = localStorage.getItem('citiesData');
+  if (!cookie) {
+    local = prompt('Введите локаль RU, EN или DE').toUpperCase();
+    loadData(local);
+    setCookie('setLocal', local);
+    setLocal = local;
+    load();
+  } else {
+    setLocal = cookie[2];
+  }
+  if (locStor !== null) {
+    citiesData = JSON.parse(locStor);
+    sortCitiesData();
+    inputCities.style.display = 'block';
+    loader.remove();
+  } else {
+    loadData(setLocal);
+    load();
+  }
+};
 
 const animate = (elem) => {
   elem.style.overflow = 'hidden';
@@ -142,7 +197,7 @@ const removeAll = () => {
   dropdownListsAutocomplete.removeAttribute('style');
 };
 
-const run = () => {
+const renderDefault = () => {
   removed();
   dropdownListsAutocomplete.style.display = 'none';
   dropdownListsDefault.removeAttribute('style');
@@ -201,7 +256,7 @@ main.addEventListener('click', (event) => {
   const target = event.target;
   if (target.matches('#select-cities')) {
     if (!document.querySelector('.dropdown-lists__countryBlock')) {
-      run();
+      renderDefault();
     }
   } else if (target.matches('.close-button') || target.matches('.main')) {
     removeAll();
@@ -224,6 +279,8 @@ selectCities.addEventListener('input', () => {
     cityList(item);
   });
   if (selectCities.value === '') {
-    run();
+    renderDefault();
   }
 });
+
+run();

@@ -1,6 +1,7 @@
 //Усложнённое задание
 'use strict';
 
+let citiesData, countryBlock;
 const main = document.querySelector('.main');
 const label = document.querySelector('label');
 const inputCities = document.querySelector('.input-cities');
@@ -12,15 +13,51 @@ const dropdownListsSelect = document.querySelector('.dropdown-lists__list--selec
 const dropdownListsAutocomplete = document.querySelector('.dropdown-lists__list--autocomplete');
 const btnLink = document.querySelector('.button');
 btnLink.removeAttribute('href');
+const loader = document.getElementById('loader');
 const emptySearch = {
   "name": "Ничего не найдено",
   "count": ""
 };
 
-//Импорт из переменной data файла db_cities
-const citiesData = data['RU']; //jshint ignore:line
+const load = () => {
+  inputCities.style.display = 'none';
+  setTimeout(() => {
+    inputCities.style.display = 'block';
+    loader.remove();
+  }, 1000);
+};
+load();
 
-let countryBlock;
+const loadData = (lang) => {
+  return fetch('./db_cities.json')
+    .then((response) => {
+      if (response.status !== 200) {
+        throw new Error('Status network not 200');
+      }
+      return response.json();
+    })
+    .then((response) => citiesData = response[lang])
+    .catch(error => console.error(error));
+};
+loadData('RU');
+
+const animate = (elem) => {
+  elem.style.overflow = 'hidden';
+  elem.style.display = 'block';
+  elem.style.transform = 'translateX(100%)';
+  let animation, count = 100;
+  const transform = () => {
+    animation = requestAnimationFrame(transform);
+    count--;
+    if (count >= 0) {
+      elem.style.transform = `translateX(${count}%)`;
+    } else {
+      cancelAnimationFrame(animation);
+    }
+  };
+  requestAnimationFrame(transform);
+};
+
 const render = (elem) => {
   const lists = elem.querySelector('.dropdown-lists__col');
   lists.textContent = '';
@@ -41,8 +78,8 @@ const cityList = (city) => {
   const divCity = document.createElement('div');
   divCity.classList.add('dropdown-lists__line');
   divCity.innerHTML = `
-      <div class="dropdown-lists__city" data-link="${city.link}">${city.name}</div>
-      <div class="dropdown-lists__count">${city.count}</div>`;
+    <div class="dropdown-lists__city">${city.name}</div>
+    <div class="dropdown-lists__count">${city.count}</div>`;
   countryBlock.append(divCity);
 };
 
@@ -71,11 +108,12 @@ const select = (target) => {
 };
 
 const selectCountry = (target) => {
-  dropdownListsDefault.style.display = 'none';
-  dropdownListsSelect.style.display = 'block';
+  document.querySelector('.dropdown-lists__list--default').style.display = 'none';
+  const listSelect = document.querySelector('.dropdown-lists__list--select');
+  animate(listSelect);
   selectCities.value = target.textContent;
-  if (!dropdownListsSelect.querySelector('.dropdown-lists__countryBlock')) {
-    render(dropdownListsSelect);
+  if (!listSelect.querySelector('.dropdown-lists__countryBlock')) {
+    render(listSelect);
     citiesData.forEach((item) => {
       if (item.country === target.textContent) {
         itemCountry(item);
@@ -88,8 +126,8 @@ const selectCountry = (target) => {
 };
 
 const removed = () => {
-  const closeBlock = document.querySelectorAll('.dropdown-lists__countryBlock');
-  closeBlock.forEach(item => {
+  const countryBlock = document.querySelectorAll('.dropdown-lists__countryBlock');
+  countryBlock.forEach(item => {
     item.remove();
   });
   btnLink.removeAttribute('href');
@@ -98,7 +136,7 @@ const removed = () => {
 const removeAll = () => {
   selectCities.value = '';
   label.textContent = 'Страна или город';
-  closeButton.style.display = 'none';
+  document.querySelector('.close-button').style.display = 'none';
   dropdownListsDefault.removeAttribute('style');
   dropdownListsSelect.removeAttribute('style');
   dropdownListsAutocomplete.removeAttribute('style');
@@ -108,6 +146,7 @@ const run = () => {
   removed();
   dropdownListsAutocomplete.style.display = 'none';
   dropdownListsDefault.removeAttribute('style');
+  animate(dropdownListsDefault);
   render(dropdownListsDefault);
   closeButton.style.display = 'block';
   citiesData.forEach(item => {
@@ -124,6 +163,28 @@ const run = () => {
   });
 };
 
+const search = (text) => {
+  const result = [];
+  const pattern = new RegExp('^' + text, 'i');
+  const replacerStrong = (str) => {
+    return `<strong>${str}</strong>`;
+  };
+  citiesData.forEach((itemCountry) => {
+    for (let i = 0; i < itemCountry.cities.length; i++) {
+      if (pattern.test(itemCountry.cities[i].name)) {
+        result.push(Object.create(itemCountry.cities[i]));
+      }
+    }
+  });
+  if (result.length === 0) {
+    result.push(emptySearch);
+  } else {
+    result.forEach((item) => {
+      item.name = item.name.replace(pattern, replacerStrong);
+    });
+  }
+  return result;
+};
 
 dropdownLists.addEventListener('click', (event) => {
   label.textContent = '';
@@ -157,20 +218,12 @@ selectCities.addEventListener('input', () => {
   dropdownListsAutocomplete.style.display = 'block';
   selectCities.value = selectCities.value.replace(/[^а-яё]/gi, '');
   const selectFilter = selectCities.value.toLowerCase();
-  const result = [];
+  const resultInput = search(selectFilter);
   render(dropdownListsAutocomplete);
-  citiesData.forEach((item) => {
-    item.cities.forEach((city) => {
-      const itemCity = city.name.toLowerCase();
-      if (selectFilter === itemCity.substring(0, selectFilter.length)) {
-        result.push(city);
-        cityList(city);
-      }
-    });
+  resultInput.forEach((item) => {
+    cityList(item);
   });
-  if (result.length === 0) {
-    cityList(emptySearch);
-  } else if (selectCities.value === '') {
+  if (selectCities.value === '') {
     run();
   }
 });

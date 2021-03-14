@@ -7,9 +7,22 @@
     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <title>Document</title>
+    <style>
+      #loader {
+        text-align: center;
+        margin: 200px auto 0 auto
+      }
+
+      .dropdown-lists {
+        overflow: hidden;
+      }
+    </style>
   </head>
   <body>
     <section class="main">
+      <div id="loader">
+        <img src="./loader.svg" alt="Загрузка...">
+      </div>
       <div class="input-cities">
         <input id="select-cities" type="text" placeholder="">
         <div class="close-button"></div>
@@ -37,7 +50,6 @@
         <a class="button" href="#">Перейти</a>
       </div>
     </section>
-    <script src="script/db_cities.js"></script>
     <script src="script/script.js"></script>
   </body>
 </html>
